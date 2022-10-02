@@ -1,0 +1,332 @@
+{
+    "sub_graphs":[
+        {
+            "name": "graph_init",
+            "print_profile":true,
+            "nodes":[
+                {
+                    "name":    "image",
+                    "outputs": [
+                        "image"
+                    ],
+                    "solver":  {
+                        "name":      "image",
+                        "class":     "vision_graph::SolverData",
+                        "data_type": "Image"
+                    }
+                },
+                {
+                    "name":    "compare_hog_similarity_init",
+                    "outputs": [
+                        "compare_hog_similarity_init"
+                    ],
+                    "solver":  {
+                        "name":      "compare_hog_similarity_init",
+                        "class":     "vision_graph::SolverData",
+                        "data_type": "UInt32"
+                    }
+                },
+                {
+
+                    "name":    "counter",
+                    "outputs": [
+                        "frame_count"
+                    ],
+                    "enable_ports": [
+                        [ "image" ]
+                    ],
+                    "solver":  {
+                        "name":         "counter",
+                        "class":        "vision_graph::SolverCounter",
+                        "counter_type": "increase",
+                        "cycle":        30
+                    }
+                },
+                {
+                    "name":    "frame_compare",
+                    "inputs":[
+                        [
+                            "frame_count"
+                        ]
+                    ],
+                    "outputs": [
+                        "frame_compare"
+                    ],
+                    "solver":  {
+                        "name":     "frame_compare",
+                        "class":    "vision_graph::SolverCompare",
+                        "compare_type":"==",
+                        "right_value":{
+                            "source": "constant",
+                            "value":  1
+                        }
+                    }
+                },
+                {
+                    "name":    "logic_compare",
+                    "inputs":[
+                        [
+                            "frame_compare"
+                        ],
+                        [
+                            "compare_hog_similarity"
+                        ]
+                    ],
+                    "outputs": [
+                        "logic_compare"
+                    ],
+                    "inputs_init":[
+                        {
+                            "input_idx":   1,
+                            "init_tensor": "compare_hog_similarity_init"
+                        }
+                    ],
+                    "solver":  {
+                        "name":       "logic_compare",
+                        "class":      "vision_graph::SolverLogic",
+                        "logic_type": "or"
+                    }
+                },
+                {
+                    "name":    "start_branch",
+                    "inputs":[
+                        [ "logic_compare" ]
+                    ],
+                    "outputs": [
+                        "for_kcf_track" ,
+                        "for_face_detect"
+                    ],
+                    "solver":  {
+                        "name":         "counter_branch",
+                        "class":        "vision_graph::SolverBranch",
+                        "forward_type": "var_num"
+                    }
+                },
+                {
+                    "name":    "face_detect",
+                    "inputs":[
+                        [
+                            "image"
+                        ]
+                    ],
+                    "outputs": [
+                        "detection_out"
+                    ],
+                    "enable_ports":[
+                        [
+                            "for_face_detect"
+                        ]
+                    ],
+                    "solver":  {
+                        "name":     "face_detect",
+                        "class":    "vision_graph::SolverDetect",
+                        "dlcv_json": "/home/shaquille/WorkSpace/orion_workspace/inference_workspace/build/Debug/x86_64-linux/vision_graph/demos/models/detection/face_ssdlite1_qf_0.35_r2.0/snpe-1.36/det_face_ssdlite1_qf_0.35_r2.0_nbn_cpu.snpe.json"
+                    }
+                },
+                {
+                    "name":    "face_select_box",
+                    "inputs":[
+                        [
+                            "detection_out"
+                        ]
+                    ],
+                    "outputs": [
+                        "detect_box"
+                    ],
+                    "solver":  {
+                        "name":           "face_select_box",
+                        "class":          "vision_graph::SolverSelectBox",
+                        "filters":        [ "face" ],
+                        "area_threshold": 400
+                    }
+                },
+                {
+                    "name":    "kcf_track_init",
+                    "inputs":[
+                        [
+                            "image"
+                        ],
+                        [
+                            "detect_box"
+                        ]
+                    ],
+                    "outputs": [
+                        "kcf_track_init"
+                    ],
+                    "solver":  {
+                        "name":       "kcf_track",
+                        "class":      "vision_graph::SolverTrackerKCF",
+                        "track_side": 70
+                    }
+                },
+                {
+                    "name":    "kcf_track",
+                    "inputs":[
+                        [
+                            "image"
+                        ]
+                    ],
+                    "outputs":     [
+                        "kcf_track"
+                    ],
+                    "enable_ports":[
+                        [
+                            "for_kcf_track"
+                        ]
+                    ],
+                    "solver":  {
+                        "name":     "kcf_track",
+                        "class":    "vision_graph::SolverTrackerKCF"
+                    }
+                },
+                {
+                    "name":    "target_selector",
+                    "inputs":[
+                        [
+                            "detect_box",
+                            "kcf_track"
+                        ]
+                    ],
+                    "outputs": [
+                        "box_selector"
+                    ],
+                    "solver":  {
+                        "name":         "target_selector",
+                        "class":        "vision_graph::SolverSelector",
+                        "select_type":  "pass_through"
+                    }
+                },
+                {
+                    "name":    "face_cut_image",
+                    "inputs":[
+                        [
+                            "image"
+                        ],
+                        [
+                            "box_selector"
+                        ]
+                    ],
+                    "outputs": [
+                        "face_cut_image"
+                    ],
+                    "solver":  {
+                        "name":     "face_cut_image",
+                        "class":    "vision_graph::SolverCutImage",
+                        "padding":  true
+                    }
+                },
+                {
+                    "name":    "face_keypoint",
+                    "inputs":[
+                        [
+                            "face_cut_image"
+                        ]
+                    ],
+                    "outputs":     [
+                        "face_keypoint",
+                        "face_attribute"
+                    ],
+                    "solver":  {
+                        "name":     "face_keypoint",
+                        "class":    "vision_graph::SolverKeypoints",
+                        "dlcv_json": "/home/shaquille/WorkSpace/orion_workspace/inference_workspace/build/Debug/x86_64-linux/vision_graph/demos/models/keypoints/face_keypoint_classifier_0428_avgpool/snpe-1.36/keypoint_classifier_0428_avgpool_cpu.snpe.json"
+                    }
+                },
+                {
+                    "name":    "face_hog",
+                    "inputs":[
+                        [
+                            "face_cut_image"
+                        ],
+                        [
+                            "face_keypoint"
+                        ]
+                    ],
+                    "outputs":     [
+                        "face_hog_similarity"
+                    ],
+                    "solver":  {
+                        "name":     "face_hog",
+                        "class":    "vision_graph::SolverFaceHOGVerify"
+                    }
+                },
+                {
+                    "name":    "compare_hog_similarity",
+                    "inputs":[
+                        [
+                            "face_hog_similarity"
+                        ]
+                    ],
+                    "outputs":[
+                        "compare_hog_similarity"
+                    ],
+                    "solver":  {
+                        "name":         "compare_hog_similarity",
+                        "class":        "vision_graph::SolverCompare",
+                        "compare_type": "<",
+                        "right_value":{
+                            "source": "constant",
+                            "value":  0.4
+                        }
+                    }
+                },
+                {
+                    "name":    "hog_similarity_branch",
+                    "inputs":[
+                        [
+                            "compare_hog_similarity"
+                        ]
+                    ],
+                    "outputs":[
+                        "for_face_kpts_offset",
+                        "for_face_stop"
+                    ],
+                    "solver":  {
+                        "name":         "hog_similarity_branch",
+                        "class":        "vision_graph::SolverBranch",
+                        "forward_type": "var_num"
+                    }
+                },
+                {
+                    "name":    "face_kpts_offset",
+                    "inputs":[
+                        [
+                            "face_keypoint"
+                        ],
+                        [
+                            "box_selector"
+                        ]
+                    ],
+                    "outputs":[
+                        "face_kpts_offset"
+                    ],
+                    "enable_ports":[
+                        [
+                            "for_face_kpts_offset"
+                        ]
+                    ],
+                    "solver":  {
+                        "name":     "face_kpts_offset",
+                        "class":    "vision_graph::SolverGeometryOffset"
+                    }
+                },
+                {
+                    "name":    "face_kpts_smooth",
+                    "inputs":[
+                        [
+                            "face_kpts_offset"
+                        ]
+                    ],
+                    "outputs":[
+                        "face_kpts_smooth",
+                        "face_box_smooth"
+                    ],
+                    "solver":  {
+                        "name":     "face_kpts_smooth",
+                        "class":    "vision_graph::SolverFaceKptsSmooth"
+                    }
+                }
+            ]
+        }
+    ]
+}

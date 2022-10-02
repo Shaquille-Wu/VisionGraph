@@ -1,0 +1,34 @@
+//
+// Created by yuan on 18-5-19.
+//
+
+#ifndef ROBOT_TRACKING_BASE_DEF_H
+#define ROBOT_TRACKING_BASE_DEF_H
+
+
+enum BODY_POSE
+{
+    BODY_POSE_FRONT = 0,
+    BODY_POSE_BACK,
+    BODY_POSE_FLANK
+};
+
+
+enum FACE_QUALITY
+{
+    FACE_QUALITY_GOOD = 0,
+    FACE_QUALITY_OBSCURE,
+    FACE_QUALITY_POSE,
+    FACE_QUALITY_NONE,
+    FACE_QUALITY_BLUR
+};
+
+
+enum PERSON_CLASS
+{
+    NOT_PERSON = 0,
+    IS_PERSON
+};
+
+
+#endif //ROBOT_TRACKING_BASE_DEF_H
